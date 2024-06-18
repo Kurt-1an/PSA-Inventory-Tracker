@@ -1,0 +1,29 @@
+﻿@page "/inventory"
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+<PageTitle>Inventory</PageTitle>
+
+
+<!--HEAD-->
+<div class="row mb-5">
+    <div class="col-8">
+        <h1>Inventory List</h1>
+    </div>
+</div>
+
+
+<div class="row d-flex align-items-center justify-content-evenly">
+    <a class="col-5 bd-callout bd-callout-info text-decoration-none text-black d-flex align-items-center justify-content-between shadow" href="/supply">
+        <strong>Supply</strong>
+        <span class="icon bi bi-pencil-fill fs-3"></span> <!-- Icon aligned to the end -->
+    </a>
+    <a class="col-5 bd-callout bd-callout-info text-decoration-none text-black d-flex align-items-center justify-content-between shadow" href="/property">
+        <strong>Property</strong>
+        <span class="icon bi bi-pc-display fs-3"></span> <!-- Icon aligned to the end -->
+    </a>
+</div>
+
+

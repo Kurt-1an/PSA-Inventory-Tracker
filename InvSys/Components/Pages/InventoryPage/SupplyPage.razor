@@ -1,0 +1,420 @@
+﻿@page "/supply"
+@rendermode InteractiveServer
+
+<PageTitle>Supply</PageTitle>
+
+
+<!--HEAD-->
+<div class="row">
+    <div class="col-8">
+        <h1>Supply List</h1>
+    </div>
+
+    <div class="col text-end hideWhenPrint">
+        <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#addSupplyModal"> <i class="bi bi-plus-lg"></i> Add</button>
+        <button class="btn btn-secondary" type="button" data-bs-toggle="modal" data-bs-target="#delSupplyModal"> <i class="bi bi-clock-history"></i> Recently Deleted</button>
+        <button class="btn btn-danger" @onclick="Print"><i class="bi bi-filetype-pdf"></i></button>
+        <button class="btn btn-success" @onclick="ExportToExcel"><i class="bi bi-filetype-xlsx"></i></button>
+    </div>
+</div>
+
+<div class="row mb-3 justify-content-end hideWhenPrint">
+    <div class="col-3">
+        <div class="input-group">
+            <InputFile OnChange="HandleFileChange" id="inputGroupFile04" aria-describedby="inputGroupFileAddon04" aria-label="Upload" class="form-control" />
+            <button class="btn btn-outline-success" type="button" id="inputGroupFileAddon04" @onclick="ImportSupplies">Import</button>
+        </div>
+    </div>
+</div>
+
+<!--#GENERAL RADIO -->
+<div class="btn-group hideWhenPrint mb-2" role="group" aria-label="General Radio Group">
+    <input type="radio" class="btn-check" name="gbtnradio" id="all" autocomplete="off" checked @onclick="ShowButtonALL">
+    <label class="btn btn-secondary" for="all">All</label>
+
+    <input type="radio" class="btn-check" name="gbtnradio" id="rpcsp" autocomplete="off" @onclick="ShowButtonOffice">
+    <label class="btn btn-secondary" for="rpcsp">Office</label>
+
+    <input type="radio" class="btn-check" name="gbtnradio" id="rpcppe" autocomplete="off" @onclick="ShowButtonOther">
+    <label class="btn btn-secondary" for="rpcppe">Other</label>
+</div>
+
+
+<!--SEARCH-->
+<input type="text" class="form-control mb-4 hideWhenPrint rounded-pill custom-shadow" @bind-value="SupplySearchInput" @oninput="GetSupplyList" aria-label="Search Product" placeholder="Search a supply..." />
+
+<!--TABLE-->
+<table class="table table-hover table-bordered table-sm">
+    <thead>
+        <tr>
+            <th scope="col">#</th>
+            <th scope="col">StockLetter</th>
+            <th scope="col">StockNo.</th>
+            <th scope="col">Article</th>
+            <th scope="col">Description</th>
+            <th scope="col">Unit Type</th>
+            <th scope="col">Average Unit Cost</th>
+            <th scope="col">Beginning Inventory</th>
+            <th scope="col">Delivery</th>
+            <th scope="col">Balance</th>
+            <th scope="col">Issuance</th>
+            <th scope="col">Ending Inventory</th>
+            <th scope="col">Total Amount</th>
+            <th scope="col" class="hideWhenPrint">Action</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @if (isLoading)
+        {
+            <tr>
+                <td colspan="5" class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var item in SupplyList)
+            {
+                if (item.IsRemoved == false)
+                {
+                    // Determine if the item has remarks
+                    bool hasRemarks = !string.IsNullOrEmpty(item.supRemark);
+
+                    // Apply a different color class if the item has remarks
+                    string rowClass = hasRemarks ? "table-primary" : "";
+
+                    <tr class="@rowClass">
+                        <th scope="row">@item.ID</th>
+                        <td>@item.supStockLetter</td>
+                        <td>@item.supStockNumber</td>
+                        <td>@item.supArticle</td>
+                        <td>@item.supDescription</td>
+                        <td>@item.supUnitType</td>
+                        <td>@item.supAverageUnitCost</td>
+                        <td>@item.supBeginningInventoryQty</td>
+                        <td>@item.supDelivery</td>
+                        <td>@item.supBalance</td>
+                        <td>@item.supIssuance</td>
+                        <td>@item.supEndingInventoryQty</td>
+                        <td>@($"{item.supTotalAmount:F2}")</td>
+
+                        <td class="text-center d-flex justify-content-around hideWhenPrint">
+                            <i class="bi bi-pencil-square text-primary hideWhenPrint" title="Edit Item"
+                               tabindex="0" data-bs-toggle="modal"
+                               data-bs-target="#editSupplyModal" @onclick='() => PopulateEdit(item.ID)'>
+                            </i>
+
+                            <i class="bi bi-trash3 text-danger hideWhenPrint" title="Remove Item"
+                               tabindex="0" data-bs-toggle="modal"
+                               data-bs-target="#removeItem" @onclick='() => PopulateSupply(item.ID)'>
+                            </i>
+                        </td>
+                    </tr>
+                }
+            }
+        }
+    </tbody>
+</table>
+
+<!----------------------------
+          MODALS
+----------------------------->
+<!--#ADD Modal-->
+<div class="modal fade mt-4" id="addSupplyModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="addSupplyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addSupplyModalLabel">Add Supply</h5>
+                <button type="button" class="btn-close" @onclick="Dismiss" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form @onsubmit="Add">
+                <div class="modal-body">
+                    <div class="row justify-content-center">
+                        <div class="col-md-11">
+                            <!-- Adjust the column size as needed -->
+                            <div class="border border-2 rounded shadow p-3 my-3">
+                                <label class="pb-3">Inventory</label>
+
+                                <div class="row">
+                                    <!-- Row wrapper -->
+                                    <div class="col-md-6">
+                                        <div class="form-floating mb-3">
+                                            <input id="SupplyStockLetter" type="text" class="form-control" @bind="SelectedSupply.supStockLetter" autocomplete="supStockLetter" aria-required="true" placeholder="Supplier..." required />
+                                            <label for="SupplyStockLetter" class="form-label text-muted">Stock Letter </label>
+                                        </div>
+                                        <div class="form-floating mb-3">
+                                            <input id="SupplyStockNumber" type="number" class="form-control" @bind="SelectedSupply.supStockNumber" autocomplete="SupplyStockNumber" aria-required="true" placeholder="Stock..." required />
+                                            <label for="SupplyStockNumber" class="form-label text-muted">Stock Number</label>
+                                        </div>
+                                        <div class="col-md-12">
+                                            <div class="border border-5 rounded p-3 my-3">
+                                                <label class="pb-3">Start Date</label>
+
+                                                <div class="form-floating mb-3">
+                                                    <input id="SupplyBegInventory" type="number" class="form-control" @bind="SelectedSupply.supBeginningInventoryQty" autocomplete="SupplyBegInventory" aria-required="true" placeholder="Beginning Inv. for Date..." required />
+                                                    <label for="SupplyBegInventory" class="form-label text-muted">Quantity</label>
+                                                </div>
+
+                                                <div class="form-floating mb-3">
+                                                    <input type="date" @bind="SelectedSupply.supBegInvDate" class="form-control" required />
+                                                    <label for="date" class="form-label text-muted">Start Date</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="form-floating mb-3">
+                                            <input type="text" class="form-control" @bind="SelectedSupply.supArticle" autocomplete="SupplyArticle" aria-required="true" placeholder="Article..." required />
+                                            <label for="SupplyArticle" class="form-label text-muted">Article</label>
+                                        </div>
+                                        <div class="form-floating mb-3">
+                                            <input type="text" class="form-control" @bind="SelectedSupply.category" list="categoryList" autocomplete="SupplyArticle" aria-required="true" placeholder="Article..." required />
+                                            <datalist id="categoryList">
+                                                <option value="Office"></option>
+                                                <option value="Other"></option>
+                                            </datalist>
+                                            <label for="SupplyArticle" class="form-label text-muted">Category</label>
+                                        </div>
+                                        <div class="form-floating mb-3">
+                                            <textarea type="text" class="form-control" @bind="SelectedSupply.supDescription" autocomplete="SupplyDescription" aria-required="true" placeholder="Description..." style="height: 8rem" required />
+                                            <label for="SupplyDescription" class="form-label text-muted">Description</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row justify-content-center">
+                        <div class="col-md-11">
+                            <div class="border border-2 rounded shadow p-3 my-3">
+                                <label class="pb-3">Costing</label>
+
+                                <div class="row">
+                                    <div class="col">
+                                        <div class="form-floating mb-3">
+                                            <input type="text" class="form-control" @bind="SelectedSupply.supUnitType" list="dataListMeasure" autocomplete="SupplyUnitType" aria-required="true" placeholder="Unit..." required />
+                                            <datalist id="dataListMeasure">
+                                                <option value="EA"></option>
+                                                <option value="PC"></option>
+                                                <option value="UNIT"></option>  
+                                                <option value="SET"></option>
+                                            </datalist>
+                                            <label for="SupplyUnitType" class="form-label text-muted">Unit</label>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="form-floating mb-3">
+                                            <input type="number" class="form-control" @bind="SelectedSupply.supAverageUnitCost" step="0.01" autocomplete="SupplyUnitCost" aria-required="true" placeholder="Average Unit Cost..." required />
+                                            <label for="SupplyUnitCost" class="form-label text-muted">Unit Cost</label>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="form-floating mb-3">
+                                            <input type="number" class="form-control" @bind="SelectedSupply.supDelivery" autocomplete="SupplyDelivery" aria-required="true" placeholder="Delivery..." required />
+                                            <label for="SupplyDelivery" class="form-label text-muted">Delivery</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @onclick="Dismiss">Close</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<!--#EDIT Modal-->
+<div class="modal fade mt-4" id="editSupplyModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="addSupplyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addSupplyModalLabel">Add Supply</h5>
+                <button type="button" class="btn-close" @onclick="Dismiss" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row justify-content-center">
+                    <div class="col-md-11">
+                        <!-- Adjust the column size as needed -->
+                        <div class="border border-2 rounded shadow p-3 my-3">
+                            <label class="pb-3">Inventory</label>
+
+                            <div class="row">
+                                <!-- Row wrapper -->
+                                <div class="col-md-6">
+                                    <div class="form-floating mb-3">
+                                        <input id="SupplyStockLetter" type="text" class="form-control" @bind="SelectedSupply.supStockLetter" autocomplete="supStockLetter" aria-required="true" placeholder="Supplier..." required />
+                                        <label for="SupplyStockLetter" class="form-label text-muted">Stock Letter </label>
+                                    </div>
+                                    <div class="form-floating mb-3">
+                                        <input id="SupplyStockNumber" type="number" class="form-control" @bind="SelectedSupply.supStockNumber" autocomplete="SupplyStockNumber" aria-required="true" placeholder="Stock..." required />
+                                        <label for="SupplyStockNumber" class="form-label text-muted">Stock Number</label>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <div class="border border-5 rounded p-3 my-3">
+                                            <label class="pb-3">Start Date</label>
+
+                                            <div class="form-floating mb-3">
+                                                <input id="SupplyBegInventory" type="number" class="form-control" @bind="SelectedSupply.supBeginningInventoryQty" autocomplete="SupplyBegInventory" aria-required="true" placeholder="Beginning Inv. for Date..." disabled />
+                                                <label for="SupplyBegInventory" class="form-label text-muted">Quantity</label>
+                                            </div>
+
+                                            <div class="form-floating mb-3">
+                                                <input type="text" value="@SelectedSupply.supBegInvDate" class="form-control" disabled />
+                                                <label for="date" class="form-label text-muted">Start Date</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-floating mb-3">
+                                        <input type="text" class="form-control" @bind="SelectedSupply.supArticle" autocomplete="SupplyArticle" aria-required="true" placeholder="Article..." required />
+                                        <label for="SupplyArticle" class="form-label text-muted">Article</label>
+                                    </div>
+                                    <div class="form-floating mb-3">
+                                        <textarea type="text" class="form-control" @bind="SelectedSupply.supDescription" autocomplete="SupplyDescription" aria-required="true" placeholder="Description..." style="height: 8rem" required />
+                                        <label for="SupplyDescription" class="form-label text-muted">Description</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row justify-content-center">
+                    <div class="col-md-11">
+                        <div class="border border-2 rounded shadow p-3 my-3">
+                            <label class="pb-3">Costing</label>
+
+                            <div class="row">
+                                <div class="col">
+                                    <div class="form-floating mb-3">
+                                        <input type="text" class="form-control" @bind="SelectedSupply.supUnitType" autocomplete="SupplyUnitType" aria-required="true" placeholder="Unit..." required />
+                                        <label for="SupplyUnitType" class="form-label text-muted">Unit</label>
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="form-floating mb-3">
+                                        <input type="number" class="form-control" @bind="SelectedSupply.supAverageUnitCost" step="0.01" autocomplete="SupplyUnitCost" aria-required="true" placeholder="Average Unit Cost..." required />
+                                        <label for="SupplyUnitCost" class="form-label text-muted">Unit Cost</label>
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="form-floating mb-3">
+                                        <input type="number" class="form-control" @bind="SelectedSupply.supDelivery" autocomplete="SupplyDelivery" aria-required="true" placeholder="Delivery..." required />
+                                        <label for="SupplyDelivery" class="form-label text-muted">Delivery</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @onclick="Dismiss">Close</button>
+                <button type="submit" class="btn btn-primary" data-bs-dismiss="modal" @onclick="Edit">Save Changes</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<!-- #REMOVE Modal -->
+<div class="modal fade mt-4" id="removeItem" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header text-dark">
+                <h5 class="modal-title" id="exampleModalLabel">Remove Supply</h5>
+                <button type="button" class="btn-close " data-bs-dismiss="modal" aria-label="Close" @onclick='Dismiss'></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <span class="fw-bold">ID:</span> @SelectedSupply.ID
+                </div>
+                <div>
+                    <span class="fw-bold">Name:</span> @SelectedSupply.supStockNumber
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick='Dismiss' data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" @onclick='Remove' data-bs-dismiss="modal">Confirm Removal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- #RECENTLY DELETED MODAL -->
+<div class="modal fade" id="delSupplyModal" tabindex="-1" aria-labelledby="delEmployeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addEmployeeModalLabel">Recently Deleted Supply</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @onclick='Dismiss'></button>
+            </div>
+            <div class="modal-body">
+
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">StockNo.</th>
+                            <th scope="col">Article</th>
+                            <th scope="col" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var item in SupplyList)
+                        {
+                            if (item.IsRemoved == true)
+                            {
+                                <tr>
+                                    <th scope="row">@item.ID</th>
+                                    <td>@item.supStockNumber</td>
+                                    <td>@item.supArticle</td>
+                                    <td class="text-center d-flex justify-content-around">
+                                        <i class="bi bi-arrow-repeat text-primary cursor-pointer" title="Restore Item"
+                                           tabindex="0" data-bs-toggle=""
+                                           data-bs-target="" @onclick='() => Merge(item.ID)'>
+                                        </i>
+
+                                        <i class="bi bi-trash3 text-danger cursor-pointer" title="Remove Item"
+                                           tabindex="0" data-bs-toggle="modal"
+                                           data-bs-target="#removeItem" @onclick='() => PopulateSupply(item.ID)'>
+                                        </i>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @onclick='Dismiss'>Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+

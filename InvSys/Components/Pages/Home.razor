@@ -1,0 +1,72 @@
+﻿@page "/"
+
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+<PageTitle>Home</PageTitle>
+
+<h1>Dashboard</h1>
+
+@if (isLoading)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+}
+else
+{
+    <div class="row px-5 mt-5 mx-auto">
+        <div class="col d-flex justify-content-start align-items-center">
+            <span class="bi bi-receipt h1 text-primary"></span>
+            <div class="ms-2 text-start">
+                <small class="p-2 text-muted">Total # of items</small>
+                <h3 class="ps-2 text-primary">@(SupplyList.Count + PropertyList.Count != null ? SupplyList.Count + PropertyList.Count : 0)</h3>
+            </div>
+        </div>
+
+        @* <div class="col d-flex justify-content-start align-items-center">
+            <span class="bi bi-clipboard-check h1 text-purple"></span>
+            <div class="ms-2 text-start">
+                <small class="p-2 text-muted">Items in inventory/stock room</small>
+                <h3 class="ps-2 text-purple text-muted"></h3>
+            </div>
+        </div> *@
+    </div>
+
+    @* <div class="row px-5 mt-5 mx-auto">
+        <div class="col d-flex justify-content-start align-items-center">
+            <span class="bi bi-file-check h1 text-success"></span>
+            <div class="ms-2 text-start">
+                <small class="p-2 text-muted">Servicable items</small>
+                <h3 class="ps-2 text-success">3</h3>
+            </div>
+        </div>
+
+        <div class="col d-flex justify-content-start align-items-center">
+            <span class="bi bi-file-x h1 text-danger"></span>
+            <div class="ms-2 text-start">
+                <small class="p-2 text-muted">Unservicable items</small>
+                <h3 class="ps-2 text-danger">3</h3>
+            </div>
+        </div>
+    </div> *@
+
+
+    <div class="border border-5 rounded p-3 my-5">
+        <label class="pb-3 h3">Quick Links</label>
+
+        <div class="row d-flex align-items-center justify-content-evenly">
+            <a class="col-5 bd-callout bd-callout-info text-decoration-none text-black d-flex align-items-center justify-content-between shadow" href="/supply">
+                <strong>Supply</strong>
+                <span class="icon bi bi-pencil-fill fs-3"></span> <!-- Icon aligned to the end -->
+            </a>
+            <a class="col-5 bd-callout bd-callout-info text-decoration-none text-black d-flex align-items-center justify-content-between shadow" href="/property">
+                <strong>Property</strong>
+                <span class="icon bi bi-pc-display fs-3"></span> <!-- Icon aligned to the end -->
+            </a>
+        </div>
+    </div>
+
+     
+}
+

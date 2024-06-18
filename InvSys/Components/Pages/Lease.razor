@@ -1,0 +1,376 @@
+﻿@page "/lease"
+@rendermode InteractiveServer
+
+
+<!--#HEAD -->
+<div class="row mb-3">
+    <div class="col-8">
+        <h1>Issue</h1>
+
+    </div>
+
+    <div class="col text-end hideWhenPrint">
+        <button class="btn btn-success" @onclick="Print"><i class="bi bi-filetype-pdf"></i></button>
+    </div>
+</div>
+<div class="row my-3 hideWhenPrint">
+    <div class="col-4">
+        <div class="row">
+            <button class="col bd-callout bd-callout-info text-decoration-none text-black d-flex align-items-center justify-content-between shadow me-2 bg-white" type="button" @onmousedown="ShowModalSupply" @onmouseup="ShowModalSupply" @attributes="attributes" data-bs-target="#leaseSupply">
+                <strong>Issue Supply</strong>
+                <span class="icon bi bi-bookmark-plus-fill fs-3"></span>
+            </button>
+            <button class="col bd-callout bd-callout-info text-decoration-none text-black d-flex align-items-center justify-content-between shadow me-2 bg-white" type="button" @onmousedown="ShowModal" @onmouseup="ShowModal" @attributes="attributes" data-bs-target="#leaseItem">
+                <strong>Issue Property</strong>
+                <span class="icon bi bi-bookmark-plus-fill fs-3"></span>
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!--#GENERAL RADIO -->
+<div class="btn-group hideWhenPrint mb-2" role="group" aria-label="General Radio Group">
+    <input type="radio" class="btn-check" name="gbtnradios" id="supply" @onclick="buttonSupply">
+    <label class="btn btn-secondary" for="supply">Supply</label>
+
+    <input type="radio" class="btn-check" name="gbtnradios" id="property" @onclick="buttonProp">
+    <label class="btn btn-secondary" for="property">Property</label>
+</div>
+
+<!--SEARCH-->
+<input type="text" class="form-control mb-2 hideWhenPrint rounded-pill custom-shadow" @bind-value="PropertySearchInput" @oninput="GetPropertyList" aria-label="Search Product" placeholder="Search a property..." />
+
+<!--# TABLE -->
+<table class="table table-hover table-bordered table-sm @(showprop?"":"d-none")">
+    <thead class="small align-middle">
+        <tr class="text-center">
+            <th scope="col">#</th>
+            <th scope="col">Article</th>
+            <th scope="col">Description</th>
+            <th scope="col" style="min-width: 18rem;">Property No.</th>
+            <th scope="col" style="max-width: 4rem;">Unit of Measure</th>
+            <th scope="col">Custodian</th>
+            <th scope="col">Location</th>
+            <th scope="col">Remarks</th>
+            <th scope="col" style="max-width: 8rem;">Status</th>
+            <th scope="col" class="hideWhenPrint">Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in PropertyList)
+        {
+            if (item.IsRemoved == false && item.propRemarks != null)
+            {
+                var remarks = item.propRemarks.Split(", ");
+                var locationDis = remarks.Length > 0 ? remarks[0] : "N/A";
+                var commentDis = remarks.Length > 1 ? remarks[1] : "N/A";
+
+                <tr>
+                    <th scope="row">@item.ID</th>
+                    <td>@item.propArticle</td>
+                    <td class="text-truncate overflow-hidden" title="@item.propDescription" style="max-width: 10rem;">@item.propDescription</td>
+                    <td>@item.propPropertyNo</td>
+                    <td>@item.propUnitOfMeasure</td>
+                    <td>@item.propCustodian</td>
+                    <td>@locationDis</td>
+                    <td>@commentDis</td>
+                    <td>@item.propStatus</td>
+
+                    <td class="text-center d-flex justify-content-around hideWhenPrint">
+                        <i class="bi bi-arrow-return-left text-primary hideWhenPrint px-1" title="Edit Item"
+                           tabindex="0" data-bs-toggle="modal"
+                           data-bs-target="#editItem">
+                        </i>
+
+                        
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<table class="table table-hover table-bordered table-sm @(showsupply?"":"d-none")">
+    <thead class="small align-middle">
+        <tr class="text-center">
+            <th scope="col">#</th>
+            <th scope="col">Stock Letter</th>
+            <th scope="col">Stock #</th>
+            <th scope="col">Description</th>
+            <th scope="col" style="max-width: 4rem;">Unit Type</th>
+            <th scope="col">Location</th>
+            <th scope="col">Remarks</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in SupplyList)
+        {
+            if (item.IsRemoved == false && item.supRemark != null)
+            {
+                var remarks = item.supRemark.Split(", ");
+                var locationDis = remarks.Length > 0 ? remarks[0] : "N/A";
+                var commentDis = remarks.Length > 1 ? remarks[1] : "N/A";
+
+                <tr>
+                    <th scope="row">@item.ID</th>
+                    <td>@item.supStockLetter</td>
+                    <td>@item.supStockNumber</td>
+                    <td class="text-truncate overflow-hidden" title="@item.supDescription" style="max-width: 10rem;">@item.supDescription</td>
+                    <td>@item.supUnitType</td>
+                    <td>@locationDis</td>
+                    <td>@commentDis</td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+
+
+<!--#LEASE MODAL PROPERTY-->
+<div class="modal fade mt-4" id="leaseItem" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="addPropertyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addPropertyModalLabel">Issue Property</h5>
+                <button type="button" class="btn-close" @onclick="Dismiss" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form @onsubmit="LeaseItem">
+                <div class="modal-body">
+                    <div class="row justify-content-center">
+                        <div class="col-md-11">
+                            <!-- Adjust the column size as needed -->
+                            <div class="border border-2 rounded shadow p-3 my-3">
+                                <label class="pb-3">Property Details</label>
+
+                                <div class="row">
+                                    <!-- Row wrapper -->
+                                    <div class="col-md-6">
+                                        <div class="row">
+                                            <div class="col">
+
+
+                                                <div class="form-floating mb-3">
+                                                    <input type="text" class="form-control" @bind="SelectedProperty.propCustodian" list="empList" autocomplete="Employee" aria-required="true" placeholder="Employee..." required />
+                                                    <datalist id="empList">
+                                                        @foreach (var employee in EmployeeList)
+                                                        {
+                                                            <option value="@employee.empName">@employee.empName</option>
+                                                        }
+                                                    </datalist>
+                                                    <label for="Employee" class="form-label text-muted">Custodian: </label>
+                                                </div>
+
+
+                                            </div>
+                                            <div class="col">
+                                                <div class="form-floating mb-3">
+                                                    <input type="number" class="form-control @(SelectedProperty.propOnHandPerCardQty == null ? "disabled-input" : "")" @bind-value="SelectedProperty.propOnHandPerCardQty" min="1" max="@SelectedProperty.propOnHandPerCardQty" autocomplete="Quantity" aria-required="true" placeholder="Quantity...">
+                                                    <label for="Quantity" class="form-label text-muted">Quantity</label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col">
+                                                <div class="form-floating mb-3">
+                                                    <input id="PropertyPropertyNo" type="text" class="form-control" @bind="SelectedProperty.propPropertyNo" @oninput="GetPropertyListNo" @onfocusin="() => ShowDropdownHandler(true)" @onfocusout="() => ShowDropdownHandler(false)" autocomplete="PropertyPropertyNo" aria-required="true" placeholder="Property No..." required />
+
+                                                    <div class="dropdown">
+                                                        <ul class='dropdown-menu col-12 mt-3 @(PropertyList.Count > 0 && ShowDropdown ? "show" : "")' style="max-height: 15rem; overflow-y: auto;">
+                                                            <li>
+                                                                <div class="dropdown-item cursor-pointer d-flex justify-content-center disabled">
+                                                                    <span class="d-flex align-items-center">
+                                                                        <i class="bi bi-info-circle text-secondary fs-6 me-2"></i>
+                                                                        <small class="text-muted">Choose property from list</small>
+                                                                    </span>
+                                                                </div>
+                                                            </li>
+                                                            @foreach (var prop in PropertyNoList)
+                                                                if (prop.IsRemoved == false && string.IsNullOrEmpty(prop.propRemarks))
+                                                                {
+                                                                    {
+                                                                        <li>
+                                                                            <div class="dropdown-item cursor-pointer d-flex align-items-center" @onclick='() => PopulateFormData(prop.ID)'>
+                                                                                @prop.propPropertyNo
+                                                                                <span class="ms-auto d-flex align-items-center">
+                                                                                    <i class="bi bi-newspaper text-secondary fs-6 me-2"></i>
+                                                                                    <small class="overflow-hidden truncate" style="width: 8rem;" title="@prop.propDescription">@prop.propDescription</small>
+                                                                                </span>
+                                                                            </div>
+                                                                        </li>
+                                                                    }
+                                                                }
+                                                        </ul>
+                                                    </div>
+
+                                                    <label for="PropertyPropertyNo" class="form-label text-muted">Property No.</label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-floating mb-3">
+                                            <input type="date" @bind="SelectedProperty.AssignDate" class="form-control" required />
+                                            <label for="date" class="form-label text-muted">Assign Date</label>
+                                        </div>
+                                        <div class="form-floating mb-3">
+                                            <input type="date" @bind="SelectedProperty.ReturnDate" class="form-control @(SelectedProperty.AssignDate == null ?"disabled-input":"")" />
+                                            <label for="date" class="form-label text-muted">Return Date</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <!-- Row wrapper -->
+                                    <div class="col">
+                                        <div class="form-floating mb-3">
+                                            <input type="text" class="form-control" @bind="location" list="locationList" autocomplete="PropertyLocation" aria-required="true" placeholder="location..." />
+                                            <datalist id="locationList">
+                                                <option value="Fixed Registration Center (FRC)"></option>
+                                                <option value="CAF Processing"></option>
+                                                <option value="Supply Room"></option>
+                                                <option value="Phil Sys-ISA"></option>
+                                                <option value="CRS Outlet"></option>
+                                            </datalist>
+                                            <label for="PropertyLocation" class="form-label text-muted">Location</label>
+                                        </div>
+                                    </div>
+
+                                    <div class="col">
+                                        <div class="form-floating mb-3">
+                                            <textarea type="text" class="form-control" @bind="comment" autocomplete="PropertyDescription" style="height: 5rem" aria-required="true" placeholder="Description..." />
+                                            <label for="PropertyDescription" class="form-label text-muted">Remarks: </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @onclick="Dismiss">Close</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<!--#LEASE MODAL SUPPLY-->
+<div class="modal fade mt-4" id="leaseSupply" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="SupplyModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="SupplyModalTitle">Issue Supply</h5>
+                <button type="button" class="btn-close" @onclick="Dismiss" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form @onsubmit="SupplyLeaseItem">
+                <div class="modal-body">
+                    <div class="row justify-content-center">
+                        <div class="col-md-11">
+                            <!-- Adjust the column size as needed -->
+                            <div class="border border-2 rounded shadow p-3 my-3">
+                                <label class="pb-3">Property Details</label>
+
+                                <div class="row">
+                                    <!-- Row wrapper -->
+                                    <div class="col-md-6">
+                                        <div class="row">
+                                            <div class="col">
+                                                <div class="form-floating mb-3">
+                                                    <input type="number" class="form-control @(SelectedSupply.supBalance == null ? "disabled-input" : "")" @bind-value="bal" min="1" max="@SelectedSupply.supBalance" autocomplete="Quantity" aria-required="true" placeholder="Quantity..." required>
+                                                    <label for="Quantity" class="form-label text-muted">Quantity</label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col">
+                                                <div class="form-floating mb-3">
+                                                    <input id="PropertyPropertyNo" type="text" class="form-control" @bind="search" @oninput="GetSupplyListNo" @onfocusin="() => SupplyShowDropdownHandler(true)" @onfocusout="() => SupplyShowDropdownHandler(false)" autocomplete="on" placeholder="Property No..." aria-required="true" required />
+
+                                                    <div class="dropdown">
+                                                        <ul class='dropdown-menu col-12 mt-3 @(SupplyList.Count > 0 && ShowDropdownSupply ? "show" : "")' style="max-height: 15rem; overflow-y: auto;">
+                                                            <li>
+                                                                <div class="dropdown-item cursor-pointer d-flex justify-content-center disabled">
+                                                                    <span class="d-flex align-items-center">
+                                                                        <i class="bi bi-info-circle text-secondary fs-6 me-2"></i>
+                                                                        <small class="text-muted">Choose Supply from list</small>
+                                                                    </span>
+                                                                </div>
+                                                            </li>
+                                                            @foreach (var prop in SupplyNoList)
+                                                                if (prop.IsRemoved == false && string.IsNullOrEmpty(prop.supRemark))
+                                                                {
+                                                                    {
+                                                                        <li>
+                                                                            <div class="dropdown-item cursor-pointer d-flex align-items-center" @onclick='() => SupplyPopulateFormData(prop.ID)'>
+                                                                                @prop.supStockNumber
+                                                                                <span class="ms-auto d-flex align-items-center">
+                                                                                    <i class="bi bi-newspaper text-secondary fs-6 me-2"></i>
+                                                                                    <small class="overflow-hidden truncate" style="width: 8rem;" title="@prop.supDescription">@prop.supDescription</small>
+                                                                                </span>
+                                                                            </div>
+                                                                        </li>
+                                                                    }
+                                                                }
+                                                        </ul>
+                                                    </div>
+
+                                                    <label for="PropertyPropertyNo" class="form-label text-muted">Supply No.</label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-floating mb-3">
+                                            <input type="date" @bind="SelectedSupply.IssueDate" class="form-control" required />
+                                            <label for="date" class="form-label text-muted">Assign Date</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <!-- Row wrapper -->
+                                    <div class="col">
+                                        <div class="form-floating mb-3">
+                                            <input type="text" class="form-control" @bind="location" list="locationList" autocomplete="PropertyLocation" aria-required="true" placeholder="location..." />
+                                            <datalist id="locationList">
+                                                <option value="Fixed Registration Center (FRC)"></option>
+                                                <option value="CAF Processing"></option>
+                                                <option value="Supply Room"></option>
+                                                <option value="Phil Sys-ISA"></option>
+                                                <option value="CRS Outlet"></option>
+                                            </datalist>
+                                            <label for="PropertyLocation" class="form-label text-muted">Location</label>
+                                        </div>
+                                    </div>
+
+                                    <div class="col">
+                                        <div class="form-floating mb-3">
+                                            <textarea type="text" class="form-control" @bind="comment" autocomplete="PropertyDescription" style="height: 5rem" aria-required="true" placeholder="Description..." />
+                                            <label for="PropertyDescription" class="form-label text-muted">Remarks: </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @onclick="Dismiss">Close</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
